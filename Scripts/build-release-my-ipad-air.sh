@@ -20,7 +20,7 @@ readonly PROJECT="SwiftRadio.xcodeproj"
 readonly SCHEME="SwiftRadio"
 readonly CONFIGURATION="Release"
 readonly BUNDLE_ID="com.cyb3rstudio.radiomy"
-readonly APP_NAME="SwiftRadio.app"
+readonly APP_NAME="Radio My.app"
 
 # --- Destination ----------------------------------------------------------------
 # Serafim Junior's iPad Air 13. Verify the identifier with:
