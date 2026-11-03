@@ -25,8 +25,17 @@ import SwiftUI
             .scrollContentBackground(.hidden)
             .background(GradientBackground())
             // The reference shows its loading cell only for an empty catalog; a search that
-            // matches nothing leaves the list empty.
-            .overlay { if stations.stations.isEmpty && stations.searchText.isEmpty { EmptyStationsView() } }
+            // matches nothing leaves the list empty. The favorites filter gets its own message.
+            .overlay {
+                if stations.stations.isEmpty && stations.searchText.isEmpty {
+                    EmptyStationsView()
+                } else if stations.filteredStations.isEmpty
+                            && stations.showFavoritesOnly && stations.searchText.isEmpty {
+                    Text(Content.Stations.emptyFavoritesMessage)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
             .navigationTitle(Content.Stations.title)
             .navigationBarTitleDisplayMode(.large)
             .refreshable { await stations.refresh() }
@@ -36,6 +45,12 @@ import SwiftUI
                         Image(systemName: "line.3.horizontal")
                     }
                     .accessibilityLabel(Content.About.title)
+                }
+                ToolbarItem(placement: .topBarLeading) {
+                    CountryFilterMenu()
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    FavoritesToolbarToggle()
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     NowPlayingToolbarSlot { isPopupOpen = true }
@@ -66,9 +81,12 @@ import SwiftUI
                 station: station,
                 isCurrent: isCurrent,
                 isPlaying: isCurrent && player.state == .playing,
-                isBuffering: isCurrent && player.isBuffering
+                isBuffering: isCurrent && player.isBuffering,
+                isFavorite: stations.favorites.isFavorite(station)
             ) {
                 tap(station)
+            } favoriteAction: {
+                stations.favorites.toggle(station)
             }
             .equatable()
             .listRowBackground(Color.clear)
@@ -97,6 +115,55 @@ import SwiftUI
         if stations.currentStation != nil && (player.state == .playing || player.isBuffering) {
             NowPlayingIndicatorButton(action: action)
         }
+    }
+}
+
+/// The country filter: a menu of every country present in the catalog, plus All Countries.
+/// Isolated so reading `stations.countries` only re-runs this menu, not the catalog body.
+@MainActor private struct CountryFilterMenu: View {
+    @Environment(StationsStore.self) private var stations
+
+    var body: some View {
+        Menu {
+            Picker(Content.Stations.countryFilter, selection: countryBinding) {
+                Text(Content.Stations.allCountries).tag(String?.none)
+                ForEach(stations.countries, id: \.self) { country in
+                    Text(country).tag(String?.some(country))
+                }
+            }
+        } label: {
+            // A globe with the filter's state spelled out for VoiceOver; the plain
+            // filter name would not say which country is active.
+            Image(systemName: "globe")
+        }
+        .accessibilityLabel(Text("\(Content.Stations.countryFilter): \(activeCountry)"))
+        .accessibilityIdentifier("countryFilter")
+    }
+
+    private var activeCountry: String {
+        stations.selectedCountry ?? Content.Stations.allCountries
+    }
+
+    /// Picker over an optional needs an explicit two-way binding over the store.
+    private var countryBinding: Binding<String?> {
+        Binding(get: { stations.selectedCountry }, set: { stations.selectedCountry = $0 })
+    }
+}
+
+/// Toolbar star: toggles the favorites-only view. Isolated so the star state change
+/// only re-runs this toggle and the list, not the whole screen body.
+@MainActor private struct FavoritesToolbarToggle: View {
+    @Environment(StationsStore.self) private var stations
+
+    var body: some View {
+        Button {
+            stations.showFavoritesOnly.toggle()
+        } label: {
+            Image(systemName: stations.showFavoritesOnly ? "star.fill" : "star")
+        }
+        .accessibilityLabel(stations.showFavoritesOnly
+                            ? Content.Stations.showAllStations : Content.Stations.showFavorites)
+        .accessibilityIdentifier("favoritesToggle")
     }
 }
 

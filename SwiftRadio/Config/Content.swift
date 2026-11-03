@@ -56,6 +56,20 @@ struct Content {
     struct Stations {
         static let title = String(localized: "stations.title")
         static let loadingMessage = String(localized: "stations.loadingMessage")
+        /// Toolbar menu filtering the catalog by country.
+        static let countryFilter = String(localized: "stations.countryFilter")
+        /// Picker row resetting the country filter.
+        static let allCountries = String(localized: "stations.allCountries")
+        /// A11y label for the star on a station row.
+        static let favoriteStation = String(localized: "stations.favoriteStation")
+        /// A11y label when the star is filled (the row's action removes the favorite).
+        static let unfavoriteStation = String(localized: "stations.unfavoriteStation")
+        /// A11y label for the toolbar favorites toggle while it is off.
+        static let showFavorites = String(localized: "stations.showFavorites")
+        /// A11y label for the toolbar favorites toggle while it is on.
+        static let showAllStations = String(localized: "stations.showAllStations")
+        /// Message replacing the list while the favorites filter hides everything.
+        static let emptyFavoritesMessage = String(localized: "stations.emptyFavoritesMessage")
     }
 
     struct Loader {

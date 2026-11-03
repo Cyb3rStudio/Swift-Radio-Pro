@@ -33,6 +33,12 @@ import SwiftUI
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.7))
                         .multilineTextAlignment(.center)
+                    if let location = station.locationCaption {
+                        Text(location)
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.5))
+                            .multilineTextAlignment(.center)
+                    }
                 }
                 .padding(.bottom, 24)
                 separator

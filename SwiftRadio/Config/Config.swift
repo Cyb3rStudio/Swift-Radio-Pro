@@ -28,7 +28,7 @@ struct Config {
     static let stationsURL = "https://fethica.com/assets/swift-radio/stations.json"
 
     // Set this to "true" to enable the search bar
-    static let searchable = false
+    static let searchable = true
 
     // Set this to "false" to show the next/previous player buttons
     static let hideNextPreviousButtons = false

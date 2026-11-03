@@ -17,18 +17,49 @@ import Observation
     public private(set) var currentStation: RadioStation?
     public private(set) var loadState: LoadState = .idle
     public var searchText = ""
+    /// Country filter; nil shows every country.
+    public var selectedCountry: String?
+    /// When true, only favorited stations are shown.
+    public var showFavoritesOnly = false
+    public let favorites: FavoritesStore
     @ObservationIgnored private let loader: any StationsLoader
     @ObservationIgnored private let player: PlayerService
     @ObservationIgnored private var loadGeneration = 0
 
-    public init(loader: any StationsLoader, player: PlayerService) {
+    public init(loader: any StationsLoader, player: PlayerService,
+                favorites: FavoritesStore = FavoritesStore()) {
         self.loader = loader
         self.player = player
+        self.favorites = favorites
+    }
+
+    /// The countries present in the catalog, localized-sorted, for the filter picker.
+    public var countries: [String] {
+        var seen: Set<String> = []
+        var names: [String] = []
+        for station in stations {
+            guard let country = station.country, !country.isEmpty, seen.insert(country).inserted else { continue }
+            names.append(country)
+        }
+        return names.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
     }
 
     public var filteredStations: [RadioStation] {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        return query.isEmpty ? stations : stations.filter { $0.name.localizedCaseInsensitiveContains(query) }
+        return stations.filter { station in
+            if showFavoritesOnly, !favorites.isFavorite(station) { return false }
+            if let selectedCountry, station.country != selectedCountry { return false }
+            guard !query.isEmpty else { return true }
+            return Self.matches(query, station: station)
+        }
+    }
+
+    /// Search spans every user-visible text field: name, short description, and the
+    /// location and genre keywords a listener would browse by.
+    static func matches(_ query: String, station: RadioStation) -> Bool {
+        [station.name, station.desc, station.city, station.country, station.tags]
+            .compactMap { $0 }
+            .contains { $0.localizedCaseInsensitiveContains(query) }
     }
 
     public func load() async {

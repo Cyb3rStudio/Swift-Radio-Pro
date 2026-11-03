@@ -22,6 +22,7 @@ import SwiftRadioCore
     let stations: StationsStore
     let player: PlayerService
     let artwork: ArtworkLoader
+    let favorites: FavoritesStore
     private var stationArtworkTask: Task<Void, Never>?
     private var trackArtworkTask: Task<Void, Never>?
 
@@ -49,7 +50,8 @@ import SwiftRadioCore
         player = PlayerService(player: engine, nowPlaying: NowPlayingInfoPublisher(), remoteCommands: commands,
                                mixesWithOtherAudio: Config.mixesWithOtherAudio)
         #endif
-        stations = StationsStore(loader: ConfiguredStationsLoader(), player: player)
+        favorites = FavoritesStore()
+        stations = StationsStore(loader: ConfiguredStationsLoader(), player: player, favorites: favorites)
         artwork = ArtworkLoader()
         commands.bind(player: player, stations: stations)
         observeArtwork()

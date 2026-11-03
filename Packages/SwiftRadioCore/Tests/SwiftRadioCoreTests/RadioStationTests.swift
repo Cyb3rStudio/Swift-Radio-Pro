@@ -62,6 +62,57 @@ struct RadioStationTests {
         #expect(roundTripped == station)
     }
 
+    /// The location keys are optional too, and older catalogs without them still decode.
+    @Test func decodesLocationKeysAndOlderCatalogs() throws {
+        let legacy = Data(#"{"name":"Test","streamURL":"https://radio.com/live","imageURL":"","desc":"Radio"}"#.utf8)
+        let legacyStation = try JSONDecoder().decode(RadioStation.self, from: legacy)
+        #expect(legacyStation.country == nil && legacyStation.countryCode == nil
+                && legacyStation.city == nil && legacyStation.tags == nil)
+
+        let json = Data(#"{"name":"Test","streamURL":"https://radio.com/live","imageURL":"","desc":"Radio","country":"France","countryCode":"FR","city":"Paris","tags":"Pop, Jazz"}"#.utf8)
+        let station = try JSONDecoder().decode(RadioStation.self, from: json)
+        #expect(station.country == "France")
+        #expect(station.countryCode == "FR")
+        #expect(station.city == "Paris")
+        #expect(station.tags == "Pop, Jazz")
+        // Encoded output decodes back identically, location keys included.
+        let roundTripped = try JSONDecoder().decode(RadioStation.self, from: JSONEncoder().encode(station))
+        #expect(roundTripped == station)
+        #expect(roundTripped.hasSameCatalogContent(as: station))
+    }
+
+    /// Row caption and info-screen location text, including the partial-key shapes.
+    @Test func locationCaptions() throws {
+        let stations = try Self.fixtures()
+        let first = try #require(stations.first)
+        #expect(first.locationCaption == "Nashville, United States")
+        // The file sample carries no location at all: no caption, no empty string.
+        let last = try #require(stations.last)
+        #expect(last.locationCaption == nil)
+
+        var station = last
+        station.city = "Paris"
+        #expect(station.locationCaption == "Paris")
+        station.country = "France"
+        #expect(station.locationCaption == "Paris, France")
+        station.city = ""
+        #expect(station.locationCaption == "France")
+        station.country = ""
+        #expect(station.locationCaption == nil)
+    }
+
+    /// Location participates in equality: rows and search render these fields.
+    @Test func locationAffectsEqualityButWebsiteStillDoesNot() throws {
+        let station = try Self.fixtures()[0]
+        var other = station
+        other.website = "https://different.example"
+        #expect(station == other)
+        other = station
+        other.city = "Denver"
+        #expect(station != other)
+        #expect(!station.hasSameCatalogContent(as: other))
+    }
+
     @Test func musicSearchEscapesQueryAndInitializerKeepsWebsite() throws {
         let station = RadioStation(name: "Test", website: "https://radio.com", streamURL: "https://radio.com/live",
                                    imageURL: "", desc: "Radio")

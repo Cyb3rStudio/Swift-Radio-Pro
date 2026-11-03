@@ -55,13 +55,28 @@ Each station supports these fields:
   "imageURL": "station-image",
   "desc": "Short tagline",
   "longDesc": "Longer description for the detail screen",
-  "website": "https://example.com"
+  "website": "https://example.com",
+  "country": "France",
+  "countryCode": "FR",
+  "city": "Paris",
+  "tags": "Pop, Jazz"
 }
 ```
 
 - **`imageURL`**: an asset name for a bundled image, a full `http(s)` URL for a remote one, or an empty string to fall back to the `stationImage` placeholder.
 - **`website`**: optional. The "Visit Website" row and the popup's website option appear only when it starts with `http` or `https`.
 - **`longDesc`**: optional. Omit the key or leave it empty and the station info screen shows a default description.
+- **`country`, `countryCode`, `city`, `tags`**: optional. `city`/`country` render as a location caption on the row and info screen, and every location key participates in search. `country` feeds the toolbar's country filter; omit them all for a station without a location.
+
+### Refreshing the worldwide catalog
+
+The bundled catalog holds the world's most popular stations, sourced from the community-maintained [Radio Browser](https://radio-browser.info) directory (top community-voted stations per country) and validated stream by stream:
+
+```bash
+python3 Scripts/fetch_stations.py
+```
+
+The script keeps the two fixture entries the UI tests rely on pinned in place ("Absolute Country Hits" first, "MP3 file sample" last), checks that every stream actually serves audio, and rewrites `SwiftRadio/Data/stations.json` in place. Run it with `--no-check` to skip stream validation, `--per-country`/`--timeout` to tune the fetch, or `--out` to preview elsewhere first.
 
 ### Forking for one station
 

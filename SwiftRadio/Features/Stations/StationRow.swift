@@ -18,15 +18,18 @@ import SwiftUI
     let isCurrent: Bool
     let isPlaying: Bool
     let isBuffering: Bool
+    let isFavorite: Bool
     let action: () -> Void
+    let favoriteAction: () -> Void
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var activationFeedback = false
 
-    /// `action` is left out: a fresh closure is built on every parent pass but always routes
-    /// the tap through the same stores, so comparing it would only defeat the skip.
+    /// `action` and `favoriteAction` are left out: fresh closures are built on every parent
+    /// pass but always route through the same stores, so comparing them would only defeat the skip.
     nonisolated static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.station == rhs.station && lhs.isCurrent == rhs.isCurrent
             && lhs.isPlaying == rhs.isPlaying && lhs.isBuffering == rhs.isBuffering
+            && lhs.isFavorite == rhs.isFavorite
     }
 
     var body: some View {
@@ -54,8 +57,15 @@ import SwiftUI
                             .foregroundStyle(.white.opacity(0.55))
                             .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
                     }
+                    if let location = station.locationCaption {
+                        Text(location)
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.4))
+                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+                FavoriteStar(isFavorite: isFavorite, action: favoriteAction)
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
@@ -70,6 +80,26 @@ import SwiftUI
         .buttonStyle(StationCardButtonStyle(activationTrigger: activationFeedback))
         .padding(.horizontal, 16)
         .padding(.vertical, 5)
+    }
+}
+
+/// The star sits inside the card's label but must not trigger the row: its own button
+/// claim wins over the row's when the tap lands on it.
+@MainActor private struct FavoriteStar: View {
+    let isFavorite: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: isFavorite ? "star.fill" : "star")
+                .font(.system(size: 18))
+                .foregroundStyle(isFavorite ? .yellow : .white.opacity(0.5))
+                .frame(width: 34, height: 34)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(isFavorite ? Content.Stations.unfavoriteStation : Content.Stations.favoriteStation)
+        .accessibilityIdentifier("favoriteStar")
     }
 }
 

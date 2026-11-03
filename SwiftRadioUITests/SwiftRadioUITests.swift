@@ -19,7 +19,9 @@ import XCTest
 
         let station = app.staticTexts["Absolute Country Hits"].firstMatch
         XCTAssertTrue(station.waitForExistence(timeout: 30))
-        XCTAssertEqual(app.collectionViews.firstMatch.cells.count, 6)
+        // The worldwide catalog is far larger than one rendered screen; List renders
+        // lazily, so assert a rendered floor rather than the full catalog count.
+        XCTAssertGreaterThanOrEqual(app.collectionViews.firstMatch.cells.count, 6)
 
         let navigationBar = app.navigationBars["Swift Radio"]
         XCTAssertTrue(navigationBar.exists)
@@ -40,7 +42,7 @@ import XCTest
 
         let station = app.staticTexts["Absolute Country Hits"].firstMatch
         XCTAssertTrue(station.waitForExistence(timeout: 30))
-        XCTAssertEqual(app.collectionViews.firstMatch.cells.count, 6)
+        XCTAssertGreaterThanOrEqual(app.collectionViews.firstMatch.cells.count, 6)
         XCTAssertTrue(app.navigationBars["Swift Radio"].exists)
         XCTAssertFalse(app.buttons["playbackToggle"].exists)
         capture("list", app: app)
@@ -77,7 +79,7 @@ import XCTest
         // Pull to refresh reloads the catalog without tearing down the popup bar.
         app.collectionViews.firstMatch.swipeDown(velocity: .slow)
         XCTAssertTrue(station.waitForExistence(timeout: 15))
-        XCTAssertEqual(app.collectionViews.firstMatch.cells.count, 6)
+        XCTAssertGreaterThanOrEqual(app.collectionViews.firstMatch.cells.count, 6)
         XCTAssertTrue(toggle.exists, "Refresh must keep the popup/navigation shell mounted")
         capture("after-refresh", app: app)
     }
@@ -131,7 +133,7 @@ import XCTest
         executionTimeAllowance = 180
         let app = fixtureApp()
         let station = app.staticTexts["MP3 file sample"].firstMatch
-        if !station.isHittable { app.collectionViews.firstMatch.swipeUp() }
+        scrollUntilHittable(station, in: app)
         station.tap()
         let toggle = app.buttons["playbackToggle"].firstMatch
         // A cold CI simulator can spend over 25 seconds compiling its first graphics pipeline
@@ -315,6 +317,18 @@ import XCTest
         XCTAssertEqual(XCTWaiter.wait(for: [appears], timeout: duration), .timedOut, file: file, line: line)
     }
 
+    /// The worldwide catalog is longer than a screen: swipe until a station cell is tappable,
+    /// giving up after enough swipes to have crossed the whole list.
+    private func scrollUntilHittable(_ element: XCUIElement, in app: XCUIApplication,
+                                     file: StaticString = #filePath, line: UInt = #line) {
+        let list = app.collectionViews.firstMatch
+        for _ in 0..<30 where !element.isHittable {
+            list.swipeUp(velocity: .fast)
+        }
+        XCTAssertTrue(element.isHittable, "The station row must scroll into reach",
+                      file: file, line: line)
+    }
+
     /// The activity container can exist before its remote content finishes rendering on CI.
     /// Never mistake the popup's covered Close button for a ready share-sheet control.
     private func shareSheetCloseButton(_ app: XCUIApplication,
@@ -363,7 +377,7 @@ import XCTest
         app.launch()
         let station = app.staticTexts["MP3 file sample"].firstMatch
         XCTAssertTrue(station.waitForExistence(timeout: 30))
-        if !station.isHittable { app.collectionViews.firstMatch.swipeUp() }
+        scrollUntilHittable(station, in: app)
         station.tap()
         let indicator = app.buttons["showNowPlaying"]
         XCTAssertTrue(indicator.waitForExistence(timeout: 10))
