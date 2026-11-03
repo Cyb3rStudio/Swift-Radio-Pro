@@ -2,8 +2,9 @@
 """
 Fetch the most popular radio stations into Swift Radio's bundled catalog: a
 community-vote top hundred for each requested region (North America, Europe,
-and Canada by default), plus every station carried over from the previously
-bundled catalog (Scripts/legacy_stations.json).
+Canada, and French Canada by default), plus every station already in the
+bundled catalog (SwiftRadio/Data/stations.json), so a regeneration adds to
+the list instead of replacing it.
 
 Sources the community-maintained Radio Browser directory (radio-browser.info),
 pools each region's stations into one community-vote ranking, validates that
@@ -19,9 +20,9 @@ Stdlib only. Python 3.9+.
 Usage:
     python3 Scripts/fetch_stations.py
     python3 Scripts/fetch_stations.py --per-region 100 --timeout 3
-    python3 Scripts/fetch_stations.py --regions na,eu       # subset of regions
-    python3 Scripts/fetch_stations.py --no-check            # skip stream validation
-    python3 Scripts/fetch_stations.py --no-merge            # skip legacy additions
+    python3 Scripts/fetch_stations.py --regions na,eu            # subset of regions
+    python3 Scripts/fetch_stations.py --no-check                 # skip stream validation
+    python3 Scripts/fetch_stations.py --no-merge                 # skip bundled-catalog additions
     python3 Scripts/fetch_stations.py --out /tmp/stations.json
 """
 
@@ -39,9 +40,10 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_OUT = REPO_ROOT / "SwiftRadio" / "Data" / "stations.json"
-# Stations of the previously bundled catalog, merged into every run so a
-# regeneration adds to the list instead of replacing it.
-LEGACY_DEFAULT = REPO_ROOT / "Scripts" / "legacy_stations.json"
+# Every run carries over the stations already bundled in the app, so a
+# regeneration adds to the catalog instead of replacing it. The frozen legacy
+# copy was dropped: the bundled catalog contains it entirely.
+MERGE_DEFAULT = REPO_ROOT / "SwiftRadio" / "Data" / "stations.json"
 
 # Radio Browser community mirrors, tried in order until one answers.
 MIRRORS = [
@@ -54,11 +56,12 @@ MIRRORS = [
 # The API asks clients to identify themselves.
 UA = "SwiftRadioCatalogFetcher/1.0 (+https://github.com/Cyb3rStudio/Swift-Radio-Pro)"
 
-# Geographic regions as ISO 3166-1 alpha-2 codes. Each region's stations are
-# pooled into one community-vote ranking, and its top `--per-region` healthy
-# stations land in the catalog. In practice the rankings fill almost entirely
-# from US/CA/MX and the big Western European countries; the remaining codes
-# are listed so the regions stay geographic rather than cherrypicked.
+# Regions as (label, ISO 3166-1 alpha-2 codes, extra search filters). Each
+# region's stations are pooled into one community-vote ranking, and its top
+# `--per-region` healthy stations land in the catalog. In practice the
+# rankings fill almost entirely from US/CA/MX and the big Western European
+# countries; the remaining codes are listed so the regions stay geographic
+# rather than cherrypicked.
 
 # North America: the three majors, Central America, and the Caribbean.
 NORTH_AMERICA = [
@@ -89,13 +92,20 @@ EUROPE = [
 
 # Canada rides along inside North America's ranking (a few Canadian stations
 # make its global top) and gets a dedicated region below for its own top list;
-# stream-URL deduplication keeps a station from landing in both twice.
+# the global deduplication net keeps a station from landing in both twice.
 CANADA = ["CA"]
 
+# French Canada: Canada's French-language stations, language-tagged in the
+# directory. Its most popular overlap the Canadian top list above, so this
+# block adds the most popular French-Canadian stations that block does not
+# already carry.
+FRENCH_CANADA = ["CA"]
+
 REGIONS = {
-    "na": ("North America", NORTH_AMERICA),
-    "eu": ("Europe", EUROPE),
-    "ca": ("Canada", CANADA),
+    "na": ("North America", NORTH_AMERICA, {}),
+    "eu": ("Europe", EUROPE, {}),
+    "ca": ("Canada", CANADA, {}),
+    "fr-ca": ("French Canada", FRENCH_CANADA, {"language": "french"}),
 }
 
 # Codecs AVFoundation (and therefore FRadioPlayer) can actually play.
@@ -238,8 +248,12 @@ def check_stream(url: str, timeout: float) -> bool:
         return False
 
 
-def fetch_country_candidates(base: str, code: str) -> list:
-    """One country's usable candidates, in community-vote order."""
+def fetch_country_candidates(base: str, code: str, filters: dict) -> list:
+    """One country's usable candidates, in community-vote order.
+
+    `filters` carries a region's extra search terms, such as the French
+    language restriction of the French-Canada region.
+    """
     raw = []
     try:
         raw = api_get(base, "/json/stations/search", {
@@ -250,6 +264,7 @@ def fetch_country_candidates(base: str, code: str) -> list:
             # before the region finds its `--per-region` healthy stations.
             "limit": "200",
             "hidebroken": "true",
+            **filters,
         })
     except Exception as error:  # noqa: BLE001
         log(f"  [{code}] search failed: {error}")
@@ -275,7 +290,7 @@ def station_key(station: dict) -> tuple:
 
 
 def select_region(base: str, label: str, codes: list, wanted: int,
-                  timeout: float, do_check: bool) -> list:
+                  timeout: float, do_check: bool, filters: dict) -> list:
     """The `wanted` most-voted healthy stations across a region's countries.
 
     Pools every country's vote-ranked candidates into one region-wide ranking,
@@ -285,7 +300,7 @@ def select_region(base: str, label: str, codes: list, wanted: int,
     """
     pooled: list = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=COUNTRY_WORKERS) as pool:
-        futures = {pool.submit(fetch_country_candidates, base, code): code
+        futures = {pool.submit(fetch_country_candidates, base, code, filters): code
                    for code in codes}
         for future in concurrent.futures.as_completed(futures):
             code = futures[future]
@@ -434,14 +449,14 @@ def main() -> None:
                         help=f"output path (default: {DEFAULT_OUT})")
     parser.add_argument("--per-region", type=int, default=100,
                         help="stations to keep per region (default: 100)")
-    parser.add_argument("--regions", default="na,eu,ca",
-                        help="comma-separated regions to fetch: na, eu, ca (default: na,eu,ca)")
+    parser.add_argument("--regions", default="na,eu,ca,fr-ca",
+                        help="comma-separated regions to fetch: na, eu, ca, fr-ca (default: na,eu,ca,fr-ca)")
     parser.add_argument("--timeout", type=float, default=3.0,
                         help="per-stream validation timeout in seconds (default: 3)")
     parser.add_argument("--no-check", action="store_true",
                         help="skip stream validation (faster, riskier catalog)")
-    parser.add_argument("--merge", type=Path, default=LEGACY_DEFAULT,
-                        help=f"previous catalog to carry over (default: {LEGACY_DEFAULT})")
+    parser.add_argument("--merge", type=Path, default=MERGE_DEFAULT,
+                        help=f"previous catalog to carry over (default: {MERGE_DEFAULT})")
     parser.add_argument("--no-merge", action="store_true",
                         help="do not carry over the previous catalog")
     args = parser.parse_args()
@@ -457,7 +472,7 @@ def main() -> None:
         if key not in keys:
             keys.append(key)
     if not keys:
-        raise SystemExit("No regions selected. Pass --regions na, eu and/or ca.")
+        raise SystemExit("No regions selected. Pass --regions na, eu, ca and/or fr-ca.")
 
     base = pick_mirror()
     validation = "off" if args.no_check else f"on, {args.timeout:.0f}s per stream"
@@ -465,11 +480,14 @@ def main() -> None:
         f"{len(keys)} region(s) (validation {validation})...")
 
     fetched: list = []
+    block_sizes: dict = {}
     for key in keys:
-        label, codes = REGIONS[key]
+        label, codes, filters = REGIONS[key]
         log(f"[{label}] searching {len(codes)} countries...")
-        fetched.extend(select_region(base, label, codes, args.per_region,
-                                     args.timeout, not args.no_check))
+        stations = select_region(base, label, codes, args.per_region,
+                                 args.timeout, not args.no_check, filters)
+        block_sizes[key] = len(stations)
+        fetched.extend(stations)
 
     # Pinned first entry must actually stream, or the app's own UI tests lie.
     if not args.no_check and not check_stream(PINNED_FIRST["streamURL"], args.timeout):
@@ -480,15 +498,15 @@ def main() -> None:
                           "update SwiftRadioUITests before shipping a dead pinned sample.")
 
     # Catalog order: pinned first entry, each region's top list in the order the
-    # regions were requested (default North America, Europe, then Canada), the
-    # carried-over previous catalog, then the pinned last entry.
+    # regions were requested (default North America, Europe, Canada, then
+    # French Canada), the carried-over previous catalog, then the last pin.
     entries = [PINNED_FIRST]
     entries.extend(entry(s) for s in fetched)
 
-    # Additions, never replacements: the previous catalog's stations join after
+    # Additions, never replacements: the bundled catalog's stations join after
     # the region blocks, deduplicated against everything already chosen.
     if args.no_merge:
-        log("Skipping previous-catalog additions (--no-merge).")
+        log("Skipping bundled-catalog additions (--no-merge).")
     elif not args.merge.exists():
         log(f"No previous catalog at {args.merge}; nothing to carry over.")
     else:
@@ -505,10 +523,15 @@ def main() -> None:
         handle.write("\n")
 
     log(f"\nWrote {len(entries)} stations across {len(countries)} countries to {args.out}")
+    # Region blocks sit contiguously after the first pin; count them by block,
+    # since a language region (fr-ca) shares its country with another (ca).
+    position = 1
     for key in keys:
-        label, codes = REGIONS[key]
-        count = sum(1 for e in entries if (e.get("countryCode") or "").upper() in codes)
-        log(f"  {label}: {count}")
+        label, _, _ = REGIONS[key]
+        size = block_sizes[key]
+        log(f"  {label}: {size}")
+        position += size
+    log(f"  Bundled-catalog additions: {len(entries) - position - 1}")
     for country in countries:
         count = sum(1 for e in entries if e.get("country") == country)
         log(f"  {country}: {count}")

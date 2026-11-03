@@ -377,7 +377,11 @@ import XCTest
         let app = XCUIApplication()
         app.launch()
         let station = app.staticTexts["MP3 file sample"].firstMatch
-        XCTAssertTrue(station.waitForExistence(timeout: 30))
+        // The bundled catalog is far longer than a screen and List renders
+        // lazily: the last row is not in the accessibility tree until scrolled
+        // into view, so wait for the list, scroll, and let the scroll helper's
+        // hittability assertion speak for the row, as the file-playback test does.
+        XCTAssertTrue(app.collectionViews.firstMatch.waitForExistence(timeout: 30))
         scrollUntilHittable(station, in: app)
         station.tap()
         let indicator = app.buttons["showNowPlaying"]
