@@ -148,6 +148,7 @@ import Testing
         #expect(store.filteredStations.map(\.name) == ["The Rock FM"])
         store.searchText = "jazz"
         #expect(store.filteredStations.isEmpty)
+        store.searchText = ""
 
         // Untoggling removes it from the view; the favorites store is the single source.
         favorites.toggle(stations[2])

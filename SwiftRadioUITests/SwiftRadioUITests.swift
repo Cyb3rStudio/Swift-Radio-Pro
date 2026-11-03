@@ -317,12 +317,13 @@ import XCTest
         XCTAssertEqual(XCTWaiter.wait(for: [appears], timeout: duration), .timedOut, file: file, line: line)
     }
 
-    /// The worldwide catalog is longer than a screen: swipe until a station cell is tappable,
-    /// giving up after enough swipes to have crossed the whole list.
+    /// The worldwide catalog is much longer than a screen: swipe until a station
+    /// cell is tappable, giving up after enough swipes to have crossed the whole
+    /// list (a fast swipe crosses only a handful of rows, so budget generously).
     private func scrollUntilHittable(_ element: XCUIElement, in app: XCUIApplication,
                                      file: StaticString = #filePath, line: UInt = #line) {
         let list = app.collectionViews.firstMatch
-        for _ in 0..<30 where !element.isHittable {
+        for _ in 0..<120 where !element.isHittable {
             list.swipeUp(velocity: .fast)
         }
         XCTAssertTrue(element.isHittable, "The station row must scroll into reach",
