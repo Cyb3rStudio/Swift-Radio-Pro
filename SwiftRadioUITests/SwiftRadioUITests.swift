@@ -23,10 +23,10 @@ import XCTest
         // lazily, so assert a rendered floor rather than the full catalog count.
         XCTAssertGreaterThanOrEqual(app.collectionViews.firstMatch.cells.count, 6)
 
-        let navigationBar = app.navigationBars["Swift Radio"]
+        let navigationBar = app.navigationBars["Radio My"]
         XCTAssertTrue(navigationBar.exists)
         // A large title is laid out below the bar buttons, so it is taller than a compact one.
-        let title = navigationBar.staticTexts["Swift Radio"].firstMatch
+        let title = navigationBar.staticTexts["Radio My"].firstMatch
         XCTAssertTrue(title.exists)
         XCTAssertGreaterThan(title.frame.height, 30)
 
@@ -43,7 +43,7 @@ import XCTest
         let station = app.staticTexts["Absolute Country Hits"].firstMatch
         XCTAssertTrue(station.waitForExistence(timeout: 30))
         XCTAssertGreaterThanOrEqual(app.collectionViews.firstMatch.cells.count, 6)
-        XCTAssertTrue(app.navigationBars["Swift Radio"].exists)
+        XCTAssertTrue(app.navigationBars["Radio My"].exists)
         XCTAssertFalse(app.buttons["playbackToggle"].exists)
         capture("list", app: app)
 
@@ -71,7 +71,7 @@ import XCTest
         content.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
             .press(forDuration: 0.1,
                    thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98)))
-        XCTAssertTrue(app.navigationBars["Swift Radio"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.navigationBars["Radio My"].waitForExistence(timeout: 10))
         XCTAssertTrue(station.waitForExistence(timeout: 10))
         XCTAssertTrue(toggle.waitForExistence(timeout: 10), "Closing the popup restores the bar")
         capture("popup-closed", app: app)
@@ -180,7 +180,7 @@ import XCTest
     func testLibraryLinkFeedbackAndReturn() throws {
         continueAfterFailure = false
         let app = fixtureApp()
-        app.buttons["About Swift Radio"].firstMatch.tap()
+        app.buttons["About Radio My"].firstMatch.tap()
         let libraries = app.buttons["Open Source Libraries"].firstMatch
         for _ in 0..<3 {
             if libraries.isHittable { break }
@@ -266,7 +266,7 @@ import XCTest
         XCTAssertTrue(close.waitForExistence(timeout: 15))
         capture("options-website-handoff", app: app)
         close.tap()
-        XCTAssertTrue(app.navigationBars["Swift Radio"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.navigationBars["Radio My"].waitForExistence(timeout: 10))
         XCTAssertTrue(toggle.isHittable)
         // LNPopupUI may retain closed content in the accessibility tree. Check the
         // interactive presentation, rather than requiring its views to be destroyed.
@@ -367,7 +367,7 @@ import XCTest
         content.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
             .press(forDuration: 0.1,
                    thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98)))
-        XCTAssertTrue(app.navigationBars["Swift Radio"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.navigationBars["Radio My"].waitForExistence(timeout: 10))
     }
 
     /// Layout/navigation do not need a remote stream to become ready. Keep this regression
@@ -424,7 +424,7 @@ import XCTest
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launch()
-        let about = app.buttons["About Swift Radio"].firstMatch
+        let about = app.buttons["About Radio My"].firstMatch
         XCTAssertTrue(about.waitForExistence(timeout: 30))
         about.tap()
         let introduction = app.staticTexts["aboutIntroduction"]
@@ -452,6 +452,6 @@ import XCTest
         let close = app.buttons["Close"].firstMatch
         XCTAssertTrue(close.waitForExistence(timeout: 10))
         close.tap()
-        XCTAssertTrue(app.navigationBars["Swift Radio"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.navigationBars["Radio My"].waitForExistence(timeout: 10))
     }
 }

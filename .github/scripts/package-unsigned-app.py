@@ -14,9 +14,9 @@ parser.add_argument("output", type=Path)
 parser.add_argument("version")
 parser.add_argument("build")
 args = parser.parse_args()
-app = args.archive / "Products/Applications/SwiftRadio.app"
+app = args.archive / "Products/Applications/Radio My.app"
 info = plistlib.loads((app / "Info.plist").read_bytes())
-expected = {"CFBundleIdentifier": "com.matthewfecher.SwiftRadio",
+expected = {"CFBundleIdentifier": "com.cyb3rstudio.radiomy",
             "CFBundleShortVersionString": args.version, "CFBundleVersion": args.build}
 for key, value in expected.items():
     if info.get(key) != value:
@@ -43,7 +43,7 @@ with tempfile.TemporaryDirectory(prefix="swiftradio-package-") as scratch:
 with zipfile.ZipFile(output) as package:
     if package.testzip() is not None:
         raise SystemExit("IPA failed its ZIP integrity check")
-    prefix = "Payload/SwiftRadio.app/"
+    prefix = "Payload/Radio My.app/"
     packaged_info = plistlib.loads(package.read(prefix + "Info.plist"))
     if any(packaged_info.get(key) != value for key, value in expected.items()):
         raise SystemExit("Packaged version differs from the archive")

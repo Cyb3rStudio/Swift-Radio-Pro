@@ -20,7 +20,7 @@ import SwiftRadioCore
     private(set) var isPlaying = false
     private(set) var duration: TimeInterval?
     var currentMetadata: (artist: String?, track: String?)? {
-        ("Swift Radio UI Test Artist", "A deliberately long now playing title to verify continuous marquee scrolling")
+        ("Radio My UI Test Artist", "A deliberately long now playing title to verify continuous marquee scrolling")
     }
     var radioURL: URL? {
         didSet {
